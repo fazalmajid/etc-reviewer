@@ -35,6 +35,14 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+function formatIsoLocal(date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return (
+    date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) +
+    " " + pad(date.getHours()) + ":" + pad(date.getMinutes()) + ":" + pad(date.getSeconds())
+  );
+}
+
 function classifyStatus(status) {
   if (status.includes("?")) return { label: "new", cls: "st-new" };
   if (status.includes("R")) return { label: "renamed", cls: "st-renamed" };
@@ -59,8 +67,7 @@ async function loadStatus() {
     pruneSelections();
     renderMachines();
     renderGroups();
-    const now = new Date().toLocaleTimeString();
-    refreshStatusEl.textContent = "Updated " + now;
+    refreshStatusEl.textContent = "Updated " + formatIsoLocal(new Date());
   } catch (err) {
     refreshStatusEl.textContent = "Refresh failed: " + err;
   } finally {
