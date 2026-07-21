@@ -9,6 +9,8 @@ every machine's uncommitted changes consolidated in one page so you can
 pick exactly which changes to commit, with what message, and review diffs
 before committing.
 
+![etc-reviewer screenshot](screenshot.png)
+
 ## Setup
 
 ```
