@@ -1,0 +1,4 @@
+# One hostname per line. Lines starting with # are ignored.
+# Whatever you put here is used both to SSH (as root@<hostname>) and as
+# the display name until the machine responds with its real `hostname`.
+localhost

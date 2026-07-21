@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>etc-reviewer</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <h1>etc-reviewer</h1>
+  <div class="toolbar">
+    <button id="refreshBtn" class="btn">Refresh</button>
+    <span id="refreshStatus" class="muted"></span>
+  </div>
+</header>
+
+<main>
+  <aside id="machinesPanel">
+    <h2>Machines</h2>
+    <ul id="machinesList"></ul>
+  </aside>
+
+  <section id="changesPanel">
+    <div id="changesToolbar">
+      <button id="selectAllBtn" class="btn-link">Select all</button>
+      <button id="selectNoneBtn" class="btn-link">Select none</button>
+      <span id="selectionSummary" class="muted"></span>
+    </div>
+    <div id="machineGroups"></div>
+  </section>
+</main>
+
+<footer id="commitBar">
+  <textarea id="commitMessage" placeholder="Commit message for all selected changes..." rows="2"></textarea>
+  <button id="commitBtn" class="btn btn-primary">Commit selected</button>
+  <div id="commitResults"></div>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>
