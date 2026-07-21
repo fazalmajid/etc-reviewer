@@ -21,7 +21,6 @@ SSH_BASE = [
     "ssh",
     "-o", "BatchMode=yes",
     "-o", "ConnectTimeout=8",
-    "-o", "StrictHostKeyChecking=accept-new",
 ]
 
 STATUS_TIMEOUT = 15

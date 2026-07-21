@@ -59,9 +59,12 @@ python3 run.py --machines-file my-machines.txt --port 6001 --no-browser
 
 - No password prompts are handled (`BatchMode=yes`); SSH auth must already
   work non-interactively as root.
-- New SSH host keys are accepted automatically (`StrictHostKeyChecking=accept-new`)
-  and recorded in your normal `known_hosts`, consistent with a first-time
-  `ssh` connection.
+- Host key verification is left entirely to your normal `ssh` configuration
+  (e.g. `~/.ssh/config`, `known_hosts`, certificate authorities). Nothing
+  here overrides `StrictHostKeyChecking`, so an unrecognized or changed
+  host key fails the connection instead of being silently accepted; that
+  machine will just show up as unreachable, with the SSH error as the
+  reason, until you resolve it through your usual process.
 - This is a single-user local tool: the server binds to `127.0.0.1` only,
   with no authentication of its own, since anyone who can reach it can push
   root-level git commits to every configured machine.
