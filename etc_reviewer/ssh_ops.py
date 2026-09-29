@@ -112,6 +112,35 @@ def is_untracked(status: str) -> bool:
     return status[0] == "?" or status[1] == "?"
 
 
+def needs_add(status: str) -> bool:
+    """False when the change is already fully staged (clean worktree
+    column, e.g. "D " after `git rm`). Such paths must not be passed to
+    `git add`: a staged deletion exists in neither the worktree nor the
+    index, so `git add` fails with "pathspec ... did not match any files".
+    `git commit -- PATH` still picks them up."""
+    return len(status) < 2 or status[1] != " "
+
+
+def build_commit_command(message: str, commit_changes: list[dict],
+                         add_gitignore: bool = False) -> str | None:
+    """Build the remote shell command committing the given changes
+    ({"path", "status"} dicts). Returns None if there is nothing to do."""
+    all_paths = [c["path"] for c in commit_changes]
+    add_paths = [c["path"] for c in commit_changes if needs_add(c.get("status", ""))]
+    if add_gitignore and ".gitignore" not in all_paths:
+        all_paths.append(".gitignore")
+        add_paths.append(".gitignore")
+    if not all_paths:
+        return None
+
+    commit_argv = ["git", "-C", "/etc", "commit", "-m", message, "--", *all_paths]
+    cmd = " ".join(shlex.quote(a) for a in commit_argv)
+    if add_paths:
+        add_argv = ["git", "-C", "/etc", "add", "--", *add_paths]
+        cmd = " ".join(shlex.quote(a) for a in add_argv) + " && " + cmd
+    return cmd
+
+
 @dataclass
 class MachineStatus:
     host: str
@@ -186,14 +215,12 @@ def get_diff(host: str, path: str, untracked: bool) -> tuple[str | None, str | N
     return (text or "(no textual diff)"), None
 
 
-def commit_machine(host: str, message: str, commit_paths: list[str],
+def commit_machine(host: str, message: str, commit_changes: list[dict],
                     gitignore_paths: list[str]) -> tuple[bool, str | None]:
-    """Stage + commit the given paths on one machine. Paths in
-    gitignore_paths are appended to /etc/.gitignore instead of being
-    committed themselves; the resulting .gitignore change is folded
-    into the same commit."""
-    all_paths = list(commit_paths)
-
+    """Stage + commit the given changes ({"path", "status"} dicts) on one
+    machine. Paths in gitignore_paths are appended to /etc/.gitignore
+    instead of being committed themselves; the resulting .gitignore
+    change is folded into the same commit."""
     if gitignore_paths:
         content = "".join("/" + p.lstrip("/") + "\n" for p in gitignore_paths)
         try:
@@ -206,16 +233,10 @@ def commit_machine(host: str, message: str, commit_paths: list[str],
         if proc.returncode != 0:
             err = proc.stderr.decode(errors="replace").strip()
             return False, f"Failed to update .gitignore: {err}"
-        if ".gitignore" not in all_paths:
-            all_paths.append(".gitignore")
 
-    if not all_paths:
+    cmd = build_commit_command(message, commit_changes, bool(gitignore_paths))
+    if cmd is None:
         return True, None
-
-    add_argv = ["git", "-C", "/etc", "add", "--", *all_paths]
-    commit_argv = ["git", "-C", "/etc", "commit", "-m", message, "--", *all_paths]
-    cmd = " ".join(shlex.quote(a) for a in add_argv) + " && " + \
-          " ".join(shlex.quote(a) for a in commit_argv)
     try:
         proc = _ssh_exec(host, cmd, timeout=COMMIT_TIMEOUT)
     except subprocess.TimeoutExpired:
@@ -230,7 +251,7 @@ def commit_machine(host: str, message: str, commit_paths: list[str],
 
 
 def commit_all(hosts_selections: dict[str, dict], message: str) -> dict[str, dict]:
-    """hosts_selections: {host: {"commit": [paths], "gitignore": [paths]}}
+    """hosts_selections: {host: {"commit": [{"path", "status"}], "gitignore": [paths]}}
     Runs commits for all involved machines in parallel.
     Returns {host: {"ok": bool, "error": str|None}}"""
     def _do(item):

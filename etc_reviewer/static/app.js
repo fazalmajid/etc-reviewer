@@ -1,6 +1,6 @@
 "use strict";
 
-/** @typedef {{host:string, path:string, orig_path:string|null, mode:'commit'|'gitignore', untracked:boolean}} Selection */
+/** @typedef {{host:string, path:string, status:string, mode:'commit'|'gitignore', untracked:boolean}} Selection */
 
 let machines = [];
 /** @type {Map<string, Selection>} */
@@ -181,7 +181,7 @@ function toggleDir(m, node, checked) {
     const k = key(m.host, c.path);
     if (checked) {
       if (!selections.has(k)) {
-        selections.set(k, { host: m.host, path: c.path, untracked: c.status.includes("?"), mode: "commit" });
+        selections.set(k, { host: m.host, path: c.path, status: c.status, untracked: c.status.includes("?"), mode: "commit" });
       }
     } else {
       selections.delete(k);
@@ -307,6 +307,7 @@ function renderChangeRow(m, c, depth) {
       selections.set(k, {
         host: m.host,
         path: c.path,
+        status: c.status,
         untracked,
         mode: modeSelect ? modeSelect.value : "commit",
       });
@@ -408,7 +409,7 @@ function selectAllVisible() {
     for (const c of m.changes) {
       const k = key(m.host, c.path);
       if (!selections.has(k)) {
-        selections.set(k, { host: m.host, path: c.path, untracked: c.status.includes("?"), mode: "commit" });
+        selections.set(k, { host: m.host, path: c.path, status: c.status, untracked: c.status.includes("?"), mode: "commit" });
       }
     }
   }
@@ -425,7 +426,7 @@ function toggleHost(m, checked) {
     const k = key(m.host, c.path);
     if (checked) {
       if (!selections.has(k)) {
-        selections.set(k, { host: m.host, path: c.path, untracked: c.status.includes("?"), mode: "commit" });
+        selections.set(k, { host: m.host, path: c.path, status: c.status, untracked: c.status.includes("?"), mode: "commit" });
       }
     } else {
       selections.delete(k);
@@ -445,14 +446,14 @@ async function submitCommit() {
     return;
   }
 
-  /** @type {Record<string, {commit: string[], gitignore: string[]}>} */
+  /** @type {Record<string, {commit: {path:string, status:string}[], gitignore: string[]}>} */
   const byHost = {};
   for (const s of selections.values()) {
     if (!byHost[s.host]) byHost[s.host] = { commit: [], gitignore: [] };
     if (s.untracked && s.mode === "gitignore") {
       byHost[s.host].gitignore.push(s.path);
     } else {
-      byHost[s.host].commit.push(s.path);
+      byHost[s.host].commit.push({ path: s.path, status: s.status });
     }
   }
 

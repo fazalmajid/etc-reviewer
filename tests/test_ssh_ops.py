@@ -2,6 +2,8 @@ from etc_reviewer.ssh_ops import (
     parse_os_release,
     parse_porcelain_z,
     is_untracked,
+    needs_add,
+    build_commit_command,
     read_machines,
     STATUS_SCRIPT,
     OS_MARKER,
@@ -34,6 +36,44 @@ def test_is_untracked():
     assert is_untracked("??")
     assert not is_untracked(" M")
     assert not is_untracked("RM")
+
+
+def test_needs_add():
+    assert needs_add("??")
+    assert needs_add(" M")
+    assert needs_add(" D")
+    assert needs_add("MM")
+    assert not needs_add("D ")
+    assert not needs_add("M ")
+    assert not needs_add("A ")
+    assert not needs_add("R ")
+
+
+def test_build_commit_command_skips_add_for_staged_deletion():
+    deleted = "ananicy.d/00-default/System Utilities & Maintenance/clamd.rules"
+    cmd = build_commit_command("msg", [
+        {"path": deleted, "status": "D "},
+        {"path": "other.conf", "status": " M"},
+    ])
+    assert cmd == (
+        "git -C /etc add -- other.conf && "
+        "git -C /etc commit -m msg -- "
+        "'ananicy.d/00-default/System Utilities & Maintenance/clamd.rules' other.conf"
+    )
+
+
+def test_build_commit_command_only_staged_changes_has_no_add():
+    cmd = build_commit_command("msg", [{"path": "gone.conf", "status": "D "}])
+    assert cmd == "git -C /etc commit -m msg -- gone.conf"
+
+
+def test_build_commit_command_gitignore_only():
+    cmd = build_commit_command("msg", [], add_gitignore=True)
+    assert cmd == "git -C /etc add -- .gitignore && git -C /etc commit -m msg -- .gitignore"
+
+
+def test_build_commit_command_nothing_to_do():
+    assert build_commit_command("msg", []) is None
 
 
 def test_parse_os_release_pretty_name():
