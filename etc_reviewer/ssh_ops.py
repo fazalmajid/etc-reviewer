@@ -124,8 +124,19 @@ def needs_add(status: str) -> bool:
 def build_commit_command(message: str, commit_changes: list[dict],
                          add_gitignore: bool = False) -> str | None:
     """Build the remote shell command committing the given changes
-    ({"path", "status"} dicts). Returns None if there is nothing to do."""
-    all_paths = [c["path"] for c in commit_changes]
+    ({"path", "status", "orig_path"} dicts). Returns None if there is
+    nothing to do.
+
+    For renames/copies the original path is added to the commit pathspec
+    so the rename is committed whole; otherwise the old path's deletion
+    stays staged. It is never passed to `git add`, for the same reason
+    as a staged deletion (see needs_add)."""
+    all_paths = []
+    for c in commit_changes:
+        all_paths.append(c["path"])
+        orig = c.get("orig_path")
+        if orig and orig not in all_paths:
+            all_paths.append(orig)
     add_paths = [c["path"] for c in commit_changes if needs_add(c.get("status", ""))]
     if add_gitignore and ".gitignore" not in all_paths:
         all_paths.append(".gitignore")
@@ -217,7 +228,7 @@ def get_diff(host: str, path: str, untracked: bool) -> tuple[str | None, str | N
 
 def commit_machine(host: str, message: str, commit_changes: list[dict],
                     gitignore_paths: list[str]) -> tuple[bool, str | None]:
-    """Stage + commit the given changes ({"path", "status"} dicts) on one
+    """Stage + commit the given changes ({"path", "status", "orig_path"} dicts) on one
     machine. Paths in gitignore_paths are appended to /etc/.gitignore
     instead of being committed themselves; the resulting .gitignore
     change is folded into the same commit."""
@@ -251,7 +262,7 @@ def commit_machine(host: str, message: str, commit_changes: list[dict],
 
 
 def commit_all(hosts_selections: dict[str, dict], message: str) -> dict[str, dict]:
-    """hosts_selections: {host: {"commit": [{"path", "status"}], "gitignore": [paths]}}
+    """hosts_selections: {host: {"commit": [{"path", "status", "orig_path"}], "gitignore": [paths]}}
     Runs commits for all involved machines in parallel.
     Returns {host: {"ok": bool, "error": str|None}}"""
     def _do(item):

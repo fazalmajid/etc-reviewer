@@ -62,6 +62,18 @@ def test_build_commit_command_skips_add_for_staged_deletion():
     )
 
 
+def test_build_commit_command_rename_includes_orig_path_in_commit_only():
+    cmd = build_commit_command("msg", [
+        {"path": "sub dir/new name.conf", "status": "RM", "orig_path": "sub dir/old name.conf"},
+        {"path": "renamed.conf", "status": "R ", "orig_path": "plain.conf"},
+    ])
+    assert cmd == (
+        "git -C /etc add -- 'sub dir/new name.conf' && "
+        "git -C /etc commit -m msg -- "
+        "'sub dir/new name.conf' 'sub dir/old name.conf' renamed.conf plain.conf"
+    )
+
+
 def test_build_commit_command_only_staged_changes_has_no_add():
     cmd = build_commit_command("msg", [{"path": "gone.conf", "status": "D "}])
     assert cmd == "git -C /etc commit -m msg -- gone.conf"
